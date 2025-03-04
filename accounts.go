@@ -57,7 +57,7 @@ func ParseAccountsMetrics(input []byte) map[string]*JobMetrics {
                         account := strings.Split(line,"|")[1]
                         _,key := accounts[account]
                         if !key {
-                                accounts[account] = &JobMetrics{0,0,0,0}
+                                accounts[account] = &JobMetrics{0,0,0,0,0}
                         }
                         state := strings.Split(line,"|")[2]
                         state = strings.ToLower(state)
@@ -66,10 +66,9 @@ func ParseAccountsMetrics(input []byte) map[string]*JobMetrics {
                         running := regexp.MustCompile(`^running`)
                         suspended := regexp.MustCompile(`^suspended`)
                         gpuInfo := strings.Split(line,"|")[4]
+                        gpus := 0.0
                         if strings.Contains(gpuInfo,":") {
-                                gpus,_ := strconv.ParseFloat(strings.Split(gpuInfo,":")[2],64)
-                        } else {
-                                gpus := 0
+                                gpus,_ = strconv.ParseFloat(strings.Split(gpuInfo,":")[2],64)
                         }
                         switch {
                         case pending.MatchString(state) == true:
