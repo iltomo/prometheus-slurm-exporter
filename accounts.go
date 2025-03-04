@@ -26,7 +26,7 @@ import (
 )
 
 func AccountsData() []byte {
-        cmd := exec.Command("squeue","-a","-r","-h","-o %A|%a|%T|%C")
+        cmd := exec.Command("squeue","-a","-r","-h","-o %A|%a|%T|%C|%b")
         stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatal(err)
@@ -45,6 +45,7 @@ type JobMetrics struct {
         pending float64
         running float64
         running_cpus float64
+        running_gpus float64
         suspended float64
 }
 
@@ -64,12 +65,19 @@ func ParseAccountsMetrics(input []byte) map[string]*JobMetrics {
                         pending := regexp.MustCompile(`^pending`)
                         running := regexp.MustCompile(`^running`)
                         suspended := regexp.MustCompile(`^suspended`)
+                        gpuInfo := strings.Split(line,"|")[4]
+                        if strings.Contains(gpuInfo,":") {
+                                gpus,_ := strconv.ParseFloat(strings.Split(gpuInfo,":")[2],64)
+                        } else {
+                                gpus := 0
+                        }
                         switch {
                         case pending.MatchString(state) == true:
                                 accounts[account].pending++
                         case running.MatchString(state) == true:
                                 accounts[account].running++
                                 accounts[account].running_cpus += cpus
+                                accounts[account].running_gpus += gpus
                         case suspended.MatchString(state) == true:
                                 accounts[account].suspended++
                         }
@@ -82,6 +90,7 @@ type AccountsCollector struct {
         pending *prometheus.Desc
         running *prometheus.Desc
         running_cpus *prometheus.Desc
+        running_gpus *prometheus.Desc
         suspended *prometheus.Desc
 }
 
@@ -91,6 +100,7 @@ func NewAccountsCollector() *AccountsCollector {
                 pending: prometheus.NewDesc("slurm_account_jobs_pending", "Pending jobs for account", labels, nil),
                 running: prometheus.NewDesc("slurm_account_jobs_running", "Running jobs for account", labels, nil),
                 running_cpus: prometheus.NewDesc("slurm_account_cpus_running", "Running cpus for account", labels, nil),
+                running_gpus: prometheus.NewDesc("slurm_account_gpus_running", "Running gpus for account", labels, nil),
                 suspended: prometheus.NewDesc("slurm_account_jobs_suspended", "Suspended jobs for account", labels, nil),
         }
 }
@@ -99,6 +109,7 @@ func (ac *AccountsCollector) Describe(ch chan<- *prometheus.Desc) {
         ch <- ac.pending
         ch <- ac.running
         ch <- ac.running_cpus
+        ch <- ac.running_gpus
         ch <- ac.suspended
 }
 
@@ -113,6 +124,9 @@ func (ac *AccountsCollector) Collect(ch chan<- prometheus.Metric) {
                 }
                 if am[a].running_cpus > 0 {
                         ch <- prometheus.MustNewConstMetric(ac.running_cpus, prometheus.GaugeValue, am[a].running_cpus, a)
+                }
+                if am[a].running_gpus > 0 {
+                        ch <- prometheus.MustNewConstMetric(ac.running_gpus, prometheus.GaugeValue, am[a].running_gpus, a)
                 }
                 if am[a].suspended > 0 {
                         ch <- prometheus.MustNewConstMetric(ac.suspended, prometheus.GaugeValue, am[a].suspended, a)
