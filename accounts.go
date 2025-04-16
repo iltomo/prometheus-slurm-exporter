@@ -58,7 +58,7 @@ func ParseAccountsMetrics(input []byte) map[string]*JobMetrics {
                         account := strings.Split(line,"|")[1]
                         _,key := accounts[account]
                         if !key {
-                                accounts[account] = &JobMetrics{0,0,0,0,0}
+                                accounts[account] = &JobMetrics{0,0,0,0,0,0}
                         }
                         state := strings.Split(line,"|")[2]
                         state = strings.ToLower(state)

@@ -58,7 +58,7 @@ func ParseUsersMetrics(input []byte) map[string]*UserJobMetrics {
                         user := strings.Split(line,"|")[1]
                         _,key := users[user]
                         if !key {
-                                users[user] = &UserJobMetrics{0,0,0,0,0}
+                                users[user] = &UserJobMetrics{0,0,0,0,0,0}
                         }
                         state := strings.Split(line,"|")[2]
                         state = strings.ToLower(state)
