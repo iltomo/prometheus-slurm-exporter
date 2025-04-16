@@ -26,7 +26,7 @@ import (
 )
 
 func AccountsData() []byte {
-        cmd := exec.Command("squeue","-a","-r","-h","-o %A|%a|%T|%C|%b")
+        cmd := exec.Command("squeue","-a","-r","-h","-o %A|%a|%T|%C|%b|%m")
         stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatal(err)
@@ -47,6 +47,7 @@ type JobMetrics struct {
         running_cpus float64
         running_gpus float64
         suspended float64
+        memAlloc float64
 }
 
 func ParseAccountsMetrics(input []byte) map[string]*JobMetrics {
@@ -62,6 +63,7 @@ func ParseAccountsMetrics(input []byte) map[string]*JobMetrics {
                         state := strings.Split(line,"|")[2]
                         state = strings.ToLower(state)
                         cpus,_ := strconv.ParseFloat(strings.Split(line,"|")[3],64)
+                        mem,_ := strconv.ParseFloat(strings.Split(line,"|")[5],64)
                         pending := regexp.MustCompile(`^pending`)
                         running := regexp.MustCompile(`^running`)
                         suspended := regexp.MustCompile(`^suspended`)
@@ -77,6 +79,7 @@ func ParseAccountsMetrics(input []byte) map[string]*JobMetrics {
                                 accounts[account].running++
                                 accounts[account].running_cpus += cpus
                                 accounts[account].running_gpus += gpus
+                                accounts[account].memAlloc += mem
                         case suspended.MatchString(state) == true:
                                 accounts[account].suspended++
                         }
@@ -91,6 +94,7 @@ type AccountsCollector struct {
         running_cpus *prometheus.Desc
         running_gpus *prometheus.Desc
         suspended *prometheus.Desc
+        memAlloc *prometheus.Desc
 }
 
 func NewAccountsCollector() *AccountsCollector {
@@ -101,6 +105,7 @@ func NewAccountsCollector() *AccountsCollector {
                 running_cpus: prometheus.NewDesc("slurm_account_cpus_running", "Running cpus for account", labels, nil),
                 running_gpus: prometheus.NewDesc("slurm_account_gpus_running", "Running gpus for account", labels, nil),
                 suspended: prometheus.NewDesc("slurm_account_jobs_suspended", "Suspended jobs for account", labels, nil),
+                memAlloc: prometheus.NewDesc("slurm_account_mem_alloc", "Allocated memory for account", labels, nil),
         }
 }
 
@@ -110,6 +115,7 @@ func (ac *AccountsCollector) Describe(ch chan<- *prometheus.Desc) {
         ch <- ac.running_cpus
         ch <- ac.running_gpus
         ch <- ac.suspended
+        ch <- ac.memAlloc
 }
 
 func (ac *AccountsCollector) Collect(ch chan<- prometheus.Metric) {
@@ -129,6 +135,9 @@ func (ac *AccountsCollector) Collect(ch chan<- prometheus.Metric) {
                 }
                 if am[a].suspended > 0 {
                         ch <- prometheus.MustNewConstMetric(ac.suspended, prometheus.GaugeValue, am[a].suspended, a)
+                }
+                if am[a].memAlloc > 0 {
+                        ch <- prometheus.MustNewConstMetric(ac.memAlloc, prometheus.GaugeValue, am[a].memAlloc, a)
                 }
         }
 }

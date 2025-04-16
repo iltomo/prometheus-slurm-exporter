@@ -26,7 +26,7 @@ import (
 )
 
 func UsersData() []byte {
-        cmd := exec.Command("squeue","-a","-r","-h","-o %A|%u|%T|%C|%b")
+        cmd := exec.Command("squeue","-a","-r","-h","-o %A|%u|%T|%C|%b|%m")
         stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatal(err)
@@ -47,6 +47,7 @@ type UserJobMetrics struct {
         running_cpus float64
         running_gpus float64
         suspended float64
+        memAlloc float64
 }
 
 func ParseUsersMetrics(input []byte) map[string]*UserJobMetrics {
@@ -66,6 +67,7 @@ func ParseUsersMetrics(input []byte) map[string]*UserJobMetrics {
                         running := regexp.MustCompile(`^running`)
                         suspended := regexp.MustCompile(`^suspended`)
                         gpuInfo := strings.Split(line,"|")[4]
+                        mem,_ := strconv.ParseFloat(strings.Split(line,"|")[5],64)
                         gpus := 0.0
                         if strings.Contains(gpuInfo,":") {
                                 gpus,_ = strconv.ParseFloat(strings.Split(gpuInfo,":")[2],64)
@@ -77,6 +79,7 @@ func ParseUsersMetrics(input []byte) map[string]*UserJobMetrics {
                                 users[user].running++
                                 users[user].running_cpus += cpus
                                 users[user].running_gpus += gpus
+                                users[user].memAlloc += mem
                         case suspended.MatchString(state) == true:
                                 users[user].suspended++
                         }
@@ -91,6 +94,7 @@ type UsersCollector struct {
         running_cpus *prometheus.Desc
         running_gpus *prometheus.Desc
         suspended *prometheus.Desc
+        memAlloc *prometheus.Desc
 }
 
 func NewUsersCollector() *UsersCollector {
@@ -101,6 +105,7 @@ func NewUsersCollector() *UsersCollector {
                 running_cpus: prometheus.NewDesc("slurm_user_cpus_running", "Running cpus for user", labels, nil),
                 running_gpus: prometheus.NewDesc("slurm_user_gpus_running", "Running gpus for user", labels, nil),
                 suspended: prometheus.NewDesc("slurm_user_jobs_suspended", "Suspended jobs for user", labels, nil),
+                memAlloc: prometheus.NewDesc("slurm_user_mem_alloc", "Memory allocated for user", labels, nil),
         }
 }
 
@@ -110,6 +115,7 @@ func (uc *UsersCollector) Describe(ch chan<- *prometheus.Desc) {
         ch <- uc.running_cpus
         ch <- uc.running_gpus
         ch <- uc.suspended
+        ch <- uc.memAlloc
 }
 
 func (uc *UsersCollector) Collect(ch chan<- prometheus.Metric) {
@@ -129,6 +135,9 @@ func (uc *UsersCollector) Collect(ch chan<- prometheus.Metric) {
                 }
                 if um[u].suspended > 0 {
                         ch <- prometheus.MustNewConstMetric(uc.suspended, prometheus.GaugeValue, um[u].suspended, u)
+                }
+                if um[u].memAlloc > 0 {
+                        ch <- prometheus.MustNewConstMetric(uc.memAlloc, prometheus.GaugeValue, um[u].memAlloc, u)
                 }
         }
 }
