@@ -63,7 +63,6 @@ func ParseAccountsMetrics(input []byte) map[string]*JobMetrics {
                         state := strings.Split(line,"|")[2]
                         state = strings.ToLower(state)
                         cpus,_ := strconv.ParseFloat(strings.Split(line,"|")[3],64)
-                        mem,_ := strconv.ParseFloat(strings.Split(line,"|")[5],64)
                         pending := regexp.MustCompile(`^pending`)
                         running := regexp.MustCompile(`^running`)
                         suspended := regexp.MustCompile(`^suspended`)
@@ -71,6 +70,15 @@ func ParseAccountsMetrics(input []byte) map[string]*JobMetrics {
                         gpus := 0.0
                         if strings.Contains(gpuInfo,":") {
                                 gpus,_ = strconv.ParseFloat(strings.Split(gpuInfo,":")[2],64)
+                        }
+                        memInfo := strings.Split(line,"|")[5]
+                        mem := 0.0
+                        if strings.Contains(memInfo, "M") {
+                                mem,_ = strconv.ParseFloat(strings.Split(memInfo,"M")[0],64)
+                        }
+                        if strings.Contains(memInfo, "G") {
+                                mem,_ = strconv.ParseFloat(strings.Split(memInfo,"GB")[0],64)
+                                mem = mem * 1024.
                         }
                         switch {
                         case pending.MatchString(state) == true:
