@@ -74,10 +74,10 @@ func ParseUsersMetrics(input []byte) map[string]*UserJobMetrics {
                         memInfo := strings.Split(line,"|")[5]
                         mem := 0.0
                         if strings.Contains(memInfo, "M") {
-                                mem,_ = strconv.ParseFloat(strings.Split(memInfo,"M")[0],64)
+                                mem,_ = strconv.ParseFloat(strings.Trim(memInfo,"M"),64)
                         }
                         if strings.Contains(memInfo, "G") {
-                                mem,_ = strconv.ParseFloat(strings.Split(memInfo,"GB")[0],64)
+                                mem,_ = strconv.ParseFloat(strings.Trim(memInfo,"G"),64)
                                 mem = mem * 1024.
                         }
                         switch {
@@ -108,7 +108,7 @@ type UsersCollector struct {
 func NewUsersCollector() *UsersCollector {
         labels := []string{"user"}
         return &UsersCollector {
-                pending: prometheus.NewDesc("slurm_user_jobs_pending", "Pending jobs for user", labels, nil), 
+                pending: prometheus.NewDesc("slurm_user_jobs_pending", "Pending jobs for user", labels, nil),
                 running: prometheus.NewDesc("slurm_user_jobs_running", "Running jobs for user", labels, nil),
                 running_cpus: prometheus.NewDesc("slurm_user_cpus_running", "Running cpus for user", labels, nil),
                 running_gpus: prometheus.NewDesc("slurm_user_gpus_running", "Running gpus for user", labels, nil),

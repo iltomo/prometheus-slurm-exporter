@@ -74,10 +74,10 @@ func ParseAccountsMetrics(input []byte) map[string]*JobMetrics {
                         memInfo := strings.Split(line,"|")[5]
                         mem := 0.0
                         if strings.Contains(memInfo, "M") {
-                                mem,_ = strconv.ParseFloat(strings.Split(memInfo,"M")[0],64)
+                                mem,_ = strconv.ParseFloat(strings.Trim(memInfo,"M"),64)
                         }
                         if strings.Contains(memInfo, "G") {
-                                mem,_ = strconv.ParseFloat(strings.Split(memInfo,"GB")[0],64)
+                                mem,_ = strconv.ParseFloat(strings.Trim(memInfo,"G"),64)
                                 mem = mem * 1024.
                         }
                         switch {
