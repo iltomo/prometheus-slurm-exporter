@@ -38,11 +38,20 @@ func GPUsGetMetrics() *GPUsMetrics {
 func ParseAllocatedGPUs() float64 {
 	var num_gpus = 0.0
 
-	args := []string{"-a", "-X", "--format=AllocTRES", "--state=RUNNING", "--noheader", "--parsable2"}
-	output := string(Execute("sacct", args))
+	//args := []string{"-a", "-X", "--format=AllocTRES", "--state=RUNNING", "--noheader", "--parsable2"}
+	//output := string(Execute("sacct", args))
+	args := []string{"-h", "-t", "R", "-o", "%b"} 
+	output := string(Execute("squeue", args))
 	if len(output) > 0 {
 		for _, line := range strings.Split(output, "\n") {
 			if len(line) > 0 {
+				if strings.HasPrefix(line,"gres/gpu"){
+					resources := strings.Split(line, ":")
+					descriptor := resources [len(resources)-1]
+					job_gpus, _ := strconv.ParseFloat(descriptor, 64)
+					num_gpus += job_gpus
+				}
+				/*
 				line = strings.Trim(line, "\"")
 					for _, resource := range strings.Split(line, ",") {
 							if strings.HasPrefix(resource, "gres/gpu=") {
@@ -51,6 +60,7 @@ func ParseAllocatedGPUs() float64 {
 								num_gpus += job_gpus
 							}
 						}
+						*/
 			}
 		}
 	}
